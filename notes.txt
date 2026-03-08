@@ -1,2 +1,12 @@
+CMake
 Building the make file: cmake -B build
 Compiling: cmake --build build
+
+pip 
+python3 -m venv venv
+source venv/bin/activate
+pip install <package-name>
+pip freeze > requirements.txt
+deactivate
+
+
