@@ -30,11 +30,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(spdlog googletest)
 
 # Main binary
-add_executable(myproject
-  playground/spdlogtest.cpp
+add_executable(server
+  playground/servertest.cpp
 )
 
-target_link_libraries(myproject PRIVATE spdlog::spdlog)
+add_executable(client
+  playground/clienttest.cpp
+)
+
+target_link_libraries(server PRIVATE spdlog::spdlog)
+target_link_libraries(client PRIVATE spdlog::spdlog)
 
 # Testing binary
 enable_testing()
