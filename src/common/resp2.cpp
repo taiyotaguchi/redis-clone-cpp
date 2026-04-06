@@ -121,8 +121,10 @@ RespValue parse_array(std::string input) {
 
   std::vector<std::shared_ptr<RespValue>> output_vec;
   for (int i = 0; i < string_vec.size(); i++) {
-    output_vec.push_back(
-        std::make_shared<RespValue>(parse_bulk_string(string_vec[i])));
+    RespValue new_bulk_string;
+    new_bulk_string.type = bulk_string;
+    new_bulk_string.value = string_vec[i];
+    output_vec.push_back(std::make_shared<RespValue>(new_bulk_string));
   }
 
   RespValue output;
