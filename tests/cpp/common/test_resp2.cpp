@@ -179,32 +179,36 @@ TEST(RESP2Parsing, Parse) {
 TEST(RESP2GoldenVector, SimpleString) {
   std::string input = "Foo";
   std::string encoded = encode_simple_string(input);
-  std::string_view encoded_sv = encoded;
   ParseResult parsed = parse_simple_string(encoded);
   EXPECT_EQ(std::get<std::string>(parsed.resp_value.value), "Foo");
   EXPECT_EQ(parsed.resp_value.type, simple_string);
   // +Foo\r\n
   EXPECT_EQ(parsed.consumed, 6);
+  EXPECT_EQ(
+      encode_simple_string(std::get<std::string>(parsed.resp_value.value)),
+      "+Foo\r\n");
 }
 TEST(RESP2GoldenVector, BulkString) {
   std::string input = "Foo Bar";
   std::string encoded = encode_bulk_string(input);
-  std::string_view encoded_sv = encoded;
   ParseResult parsed = parse_bulk_string(encoded);
   EXPECT_EQ(std::get<std::string>(parsed.resp_value.value), "Foo Bar");
   EXPECT_EQ(parsed.resp_value.type, bulk_string);
   // $7\r\nFoo Bar\r\n
   EXPECT_EQ(parsed.consumed, 13);
+  EXPECT_EQ(encode_bulk_string(std::get<std::string>(parsed.resp_value.value)),
+            "$7\r\nFoo Bar\r\n");
 }
+
 TEST(RESP2GoldenVector, Integer) {
   int input = 101;
   std::string encoded = encode_integer(input);
-  std::string_view encoded_sv = encoded;
   ParseResult parsed = parse_integer(encoded);
   EXPECT_EQ(std::get<int>(parsed.resp_value.value), 101);
   EXPECT_EQ(parsed.resp_value.type, integer);
   // :101\r\n
   EXPECT_EQ(parsed.consumed, 6);
+  EXPECT_EQ(encode_integer(std::get<int>(parsed.resp_value.value)), ":101\r\n");
 }
 TEST(RESP2GoldenVector, Array) {
   RespValue resp_value_1;
@@ -218,7 +222,6 @@ TEST(RESP2GoldenVector, Array) {
       std::make_shared<RespValue>(resp_value_1),
       std::make_shared<RespValue>(resp_value_2)};
   std::string encoded = encode_array(input);
-  std::string_view encoded_sv = encoded;
   ParseResult parsed = parse_array(encoded);
   EXPECT_EQ(std::get<int>(std::get<std::vector<std::shared_ptr<RespValue>>>(
                               parsed.resp_value.value)[1]
@@ -233,12 +236,35 @@ TEST(RESP2GoldenVector, Array) {
   // *2\r\n$3\r\nFoo\r\n:100\r\n
   EXPECT_EQ(parsed.consumed, 19);
 }
-TEST(RESP2GoldenVector, NULL) {
+TEST(RESP2GoldenVector, Null) {
   std::string encoded = encode_null();
-  std::string_view encoded_sv = encoded;
   ParseResult parsed = parse_null(encoded);
   EXPECT_EQ(std::get<std::string>(parsed.resp_value.value), "");
   EXPECT_EQ(parsed.resp_value.type, null);
   // $-1\r\n
   EXPECT_EQ(parsed.consumed, 5);
+}
+TEST(RESP2GoldenVector, Error) {
+  std::string input = "Error has occured";
+  std::string encoded = encode_error(input);
+  ParseResult parsed = parse_error(encoded);
+  EXPECT_EQ(std::get<std::string>(parsed.resp_value.value),
+            "Error has occured");
+  EXPECT_EQ(parsed.resp_value.type, error);
+  // -Error has occured\r\n
+  EXPECT_EQ(parsed.consumed, 20);
+  EXPECT_EQ(encode_error(std::get<std::string>(parsed.resp_value.value)),
+            "-Error has occured\r\n");
+}
+TEST(RESP2GoldenVector, SerializeParse) {
+  RespValue input;
+  input.value = "Foo";
+  input.type = bulk_string;
+  std::string serialized = serialize(input);
+  ParseResult parsed = parse(serialized);
+  EXPECT_EQ(std::get<std::string>(parsed.resp_value.value), "Foo");
+  EXPECT_EQ(parsed.resp_value.type, bulk_string);
+  // $3\r\nFoo\r\n
+  EXPECT_EQ(parsed.consumed, 9);
+  EXPECT_EQ(serialize(parsed.resp_value), "$3\r\nFoo\r\n");
 }

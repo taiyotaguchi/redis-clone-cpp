@@ -35,6 +35,7 @@ std::string encode_integer(int input);
 std::string encode_bulk_string(std::string input);
 std::string encode_array(std::vector<std::shared_ptr<RespValue>> input);
 std::string encode_null();
+std::string serialize(RespValue);
 
 ParseResult parse_simple_string(std::string_view input);
 ParseResult parse_bulk_string(std::string_view input);
