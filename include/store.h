@@ -9,6 +9,8 @@ public:
   std::optional<std::string> get(const std::string &key);
   bool del(const std::string &key);
   bool exists(const std::string &key);
+  std::optional<int> incr(const std::string &key);
+  std::optional<int> decr(const std::string &key);
 
 private:
   std::unordered_map<std::string, std::string> data;
