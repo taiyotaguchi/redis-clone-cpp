@@ -31,7 +31,7 @@ int Server::create() {
 
   int bind_res = bind(fd, res->ai_addr, res->ai_addrlen);
 
-  if (fd == -1) {
+  if (bind_res == -1) {
     LOG_ERROR("Failed to bind to socket");
     return -1;
   }
@@ -40,7 +40,7 @@ int Server::create() {
 
   int listen_res = listen(fd, backlog);
 
-  if (fd == -1) {
+  if (listen_res == -1) {
     LOG_ERROR("Failed to run listen");
     return -1;
   }
