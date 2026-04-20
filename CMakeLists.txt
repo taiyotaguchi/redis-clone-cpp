@@ -29,7 +29,7 @@ include_directories(include)
 
 # Main binary
 add_executable(server
-  src/server/nonblocking_server.cpp
+  src/server/main.cpp
 )
 
 add_library(resp2
@@ -45,6 +45,7 @@ add_library(server_lib
   src/server/store.cpp
   src/server/server.cpp
   src/server/server_helpers.cpp
+  src/server/server_event_loop.cpp
 )
 
 target_link_libraries(server PRIVATE server_lib resp2 socket)
