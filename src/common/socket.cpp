@@ -1,7 +1,9 @@
 #include "../../include/socket.h"
 #include "../../include/logger.h"
+#include <cerrno>
 #include <cstring>
 #include <netdb.h>
+#include <optional>
 #include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -21,12 +23,17 @@ int Socket::send(int fd, std::string buffer) {
   return send_res;
 }
 
-std::string Socket::read(int fd, size_t size) {
+std::optional<std::string> Socket::read(int fd, size_t size) {
   std::string buffer(size, '\0');
   ssize_t bytes_read = ::read(fd, buffer.data(), size);
   if (bytes_read == -1) {
-    LOG_ERROR("Failed to read buffer");
-    return "";
+    if (errno == EAGAIN) {
+      return std::nullopt;
+    } else {
+      LOG_ERROR("Failed to read buffer");
+      LOG_ERROR("Failed to read buffer: " + std::string(strerror(errno)));
+      return "";
+    }
   }
   buffer.resize(bytes_read);
   return buffer;

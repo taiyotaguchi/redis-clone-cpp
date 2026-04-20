@@ -10,7 +10,7 @@ public:
 
   static int send(int fd, std::string buffer);
 
-  static std::string read(int fd, size_t size);
+  static std::optional<std::string> read(int fd, size_t size);
 
 protected:
   std::string ip;

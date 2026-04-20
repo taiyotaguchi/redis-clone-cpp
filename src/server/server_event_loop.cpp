@@ -1,6 +1,7 @@
 #include "../../include/server_event_loop.h"
 #include "../../include/dispatch.h"
 #include "../../include/resp2.h"
+#include <optional>
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <unordered_map>
@@ -33,46 +34,62 @@ void remove_client(int epoll_fd, int client_fd,
 void handle_client(int epoll_fd, int client_fd, Server &server, Store &store,
                    std::unordered_map<int, std::string> &command_buffer_map,
                    std::unordered_map<int, std::string> &write_buffer_map) {
-  std::string commands_encoded = server.read(client_fd, 2048);
+  std::optional<std::string> commands_encoded_optional =
+      server.read(client_fd, 2048);
+  if (commands_encoded_optional == std::nullopt) {
+    return;
+  }
+  std::string commands_encoded = commands_encoded_optional.value();
   if (commands_encoded.empty()) {
     remove_client(epoll_fd, client_fd, command_buffer_map);
     return;
   }
   command_buffer_map[client_fd] += commands_encoded;
-  ParseResult parsed_result = parse(command_buffer_map[client_fd]);
-  if (parsed_result.resp_value.type == incomplete) {
-    return;
-  } else if (parsed_result.resp_value.type == failed) {
-    remove_client(epoll_fd, client_fd, command_buffer_map);
-    return;
-  }
-  auto commands_parsed = std::get<std::vector<std::shared_ptr<RespValue>>>(
-      parsed_result.resp_value.value);
-  std::vector<std::string> commands;
-  for (int i = 0; i < commands_parsed.size(); i++) {
-    commands.push_back(std::get<std::string>(commands_parsed[i]->value));
-  }
-  RespValue resp_value = execute(commands, store);
-  std::string return_encoded = serialize(resp_value);
-  int send_res = server.send(client_fd, return_encoded);
-  if (send_res < return_encoded.size() && send_res != -1) {
-    write_buffer_map[client_fd] = return_encoded.substr(send_res);
-    epoll_event ev;
-    ev.events = EPOLLIN | EPOLLOUT;
-    ev.data.fd = client_fd;
-    epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client_fd, &ev);
-  } else if (send_res == -1) {
-    if (errno == EAGAIN) {
-      write_buffer_map[client_fd] = return_encoded;
+  while (true) {
+    ParseResult parsed_result = parse(command_buffer_map[client_fd]);
+    if (parsed_result.resp_value.type == incomplete) {
+      return;
+    } else if (parsed_result.resp_value.type == failed) {
+      remove_client(epoll_fd, client_fd, command_buffer_map);
+      return;
+    }
+    auto commands_parsed = std::get<std::vector<std::shared_ptr<RespValue>>>(
+        parsed_result.resp_value.value);
+    std::vector<std::string> commands;
+    for (int i = 0; i < commands_parsed.size(); i++) {
+      commands.push_back(std::get<std::string>(commands_parsed[i]->value));
+    }
+    RespValue resp_value = execute(commands, store);
+    std::string return_encoded = serialize(resp_value);
+    int send_res = server.send(client_fd, return_encoded);
+    if (send_res < return_encoded.size() && send_res != -1) {
+      write_buffer_map[client_fd] = return_encoded.substr(send_res);
       epoll_event ev;
       ev.events = EPOLLIN | EPOLLOUT;
       ev.data.fd = client_fd;
       epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client_fd, &ev);
+      return;
+    } else if (send_res == -1) {
+      if (errno == EAGAIN) {
+        write_buffer_map[client_fd] = return_encoded;
+        epoll_event ev;
+        ev.events = EPOLLIN | EPOLLOUT;
+        ev.data.fd = client_fd;
+        epoll_ctl(epoll_fd, EPOLL_CTL_MOD, client_fd, &ev);
+        return;
+      } else {
+        remove_client(epoll_fd, client_fd, command_buffer_map);
+        return;
+      }
+    }
+    if (parsed_result.consumed < command_buffer_map[client_fd].size()) {
+      command_buffer_map[client_fd] =
+          command_buffer_map[client_fd].substr(parsed_result.consumed);
     } else {
-      remove_client(epoll_fd, client_fd, command_buffer_map);
+      command_buffer_map.erase(client_fd);
+      return;
     }
   }
-  command_buffer_map.erase(client_fd);
 }
 
 void handle_write(int epoll_fd, Server &server, int client_fd,
