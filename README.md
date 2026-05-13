@@ -29,10 +29,19 @@ PYTHONPATH=. python python/client.py
 ```
 Sample session:
 ```
-   > PING
-   PONG
-   > SET hello world
-   OK
-   > GET hello
-   "world"
+> PING
+PONG
+> SET hello world
+OK
+> GET hello
+"world"
 ```
+
+## Supported commands
+   
+- Connection: `PING`, `ECHO`
+- Strings: `GET`, `SET`, `INCR`, `DECR`
+
+## What's next
+
+Planned but not yet implemented: AOF persistence with configurable fsync, integration tests against real Redis, benchmark suite comparing throughput and latency to Redis, and a profiling pass to identify bottlenecks.
